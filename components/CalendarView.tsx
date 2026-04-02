@@ -158,7 +158,7 @@ export const CalendarView: React.FC = () => {
       const updatedRaces = await Promise.all(races.map(async (race) => {
         if (race.status === 'UPCOMING' || race.status === 'NEXT') {
           try {
-            const response = await fetch(`/api/weather/${encodeURIComponent(race.country)}`);
+            const response = await fetch(`https://wttr.in/${encodeURIComponent(race.country)}?format=j1&lang=ru`);
             const data = await response.json();
             const weather = data.current_condition?.[0]?.weatherDesc?.[0]?.value || 'N/A';
             const temp = data.current_condition?.[0]?.temp_C ? `Воздух: ${data.current_condition[0].temp_C}°C` : '';

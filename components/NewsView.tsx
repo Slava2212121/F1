@@ -1,13 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ExternalLink, RefreshCw, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
-
-interface NewsItem {
-  id: string;
-  title: string;
-  link: string;
-  time: string;
-}
+import { fetchF1News, NewsItem } from '../src/lib/news';
 
 export const NewsView: React.FC = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -18,11 +12,11 @@ export const NewsView: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/news');
-      if (!response.ok) throw new Error('Failed to fetch news');
-      const data = await response.json();
-      setNews(data.news || []);
+      const uniqueNews = await fetchF1News();
+      if (uniqueNews.length === 0) throw new Error('No news');
+      setNews(uniqueNews);
     } catch (err) {
+      console.error(err);
       setError('Не удалось загрузить новости. Попробуйте позже.');
     } finally {
       setLoading(false);

@@ -8,13 +8,7 @@ import { DriversView } from './components/DriversView';
 import { StreamsView } from './components/StreamsView';
 import { Play, Share2, Search, Bell, ExternalLink, Clock, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-
-interface NewsItem {
-  id: string;
-  title: string;
-  link: string;
-  time: string;
-}
+import { fetchF1News, NewsItem } from './src/lib/news';
 
 interface Notification {
   id: string;
@@ -48,9 +42,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/news')
-      .then(res => res.json())
-      .then(data => setNews(data.news || []))
+    fetchF1News()
+      .then(data => setNews(data || []))
       .catch(err => console.error("Failed to fetch news for search", err));
   }, []);
 
