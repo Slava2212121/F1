@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Paddock Prime F1</string>
+    <string name="title_activity_main">Paddock Prime F1</string>
+    <string name="package_name">com.paddockprime.f1</string>
+    <string name="custom_url_scheme">com.paddockprime.f1</string>
+</resources>
