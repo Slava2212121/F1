@@ -35,7 +35,10 @@ export enum ViewState {
   DRIVERS = 'DRIVERS',
   CONSTRUCTORS = 'CONSTRUCTORS',
   STREAMS = 'STREAMS',
-  NEWS = 'NEWS'
+  NEWS = 'NEWS',
+  FAVORITES = 'FAVORITES',
+  PREDICTIONS = 'PREDICTIONS',
+  ADMIN = 'ADMIN'
 }
 
 export interface RaceSession {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Driver } from '../types';
 import { getDriverInsight } from '../services/geminiService';
-import { ChevronRight, Zap, Info, X } from 'lucide-react';
+import { ChevronRight, Zap, Info, X, Heart } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -14,6 +14,23 @@ export const DriverCard: React.FC<DriverCardProps> = ({ driver, position }) => {
   const [insight, setInsight] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(() => {
+    const favorites = JSON.parse(localStorage.getItem('f1_favorites_drivers') || '[]');
+    return favorites.includes(driver.id);
+  });
+
+  const toggleFavorite = () => {
+    const favorites = JSON.parse(localStorage.getItem('f1_favorites_drivers') || '[]');
+    if (isFavorite) {
+      const newFavorites = favorites.filter((id: string) => id !== driver.id);
+      localStorage.setItem('f1_favorites_drivers', JSON.stringify(newFavorites));
+      setIsFavorite(false);
+    } else {
+      const newFavorites = [...favorites, driver.id];
+      localStorage.setItem('f1_favorites_drivers', JSON.stringify(newFavorites));
+      setIsFavorite(true);
+    }
+  };
 
   const handleAnalyze = async () => {
     if (insight) return;
@@ -47,6 +64,13 @@ export const DriverCard: React.FC<DriverCardProps> = ({ driver, position }) => {
             className="absolute top-4 right-4 text-gray-400 hover:text-white bg-black/50 rounded-full p-1.5 transition-colors z-10 opacity-0 group-hover:opacity-100"
         >
             <Info size={16} />
+        </button>
+        
+        <button 
+            onClick={toggleFavorite}
+            className={`absolute top-4 right-12 text-gray-400 hover:text-f1-red transition-colors z-10 opacity-0 group-hover:opacity-100 ${isFavorite ? 'text-f1-red opacity-100' : ''}`}
+        >
+            <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />
         </button>
 
         <div className="flex items-end p-4 pt-10 gap-4">

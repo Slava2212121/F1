@@ -6,7 +6,13 @@ import { ConstructorsView, CONSTRUCTORS } from './components/ConstructorsView';
 import { NewsView } from './components/NewsView';
 import { DriversView } from './components/DriversView';
 import { StreamsView } from './components/StreamsView';
-import { Play, Share2, Search, Bell, ExternalLink, Clock, Trash2 } from 'lucide-react';
+import { FavoritesView } from './components/FavoritesView';
+import { AdminView } from './components/AdminView';
+import { PredictionsView } from './components/PredictionsView';
+import { SplashScreen } from './components/SplashScreen';
+import { subscribeToData } from './services/firebaseService';
+import { INITIAL_DRIVERS } from './data/drivers';
+import { Play, Share2, Search, Bell, ExternalLink, Clock, Trash2, Settings, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchF1News, NewsItem } from './src/lib/news';
 
@@ -26,12 +32,43 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
 ];
 
 export default function App() {
+  const [isSpaceTheme, setIsSpaceTheme] = useState(() => {
+    const saved = localStorage.getItem('spaceThemeDismissed_v2');
+    if (saved === 'true') return false;
+    const now = new Date();
+    const endDate = new Date('2026-04-16T00:00:00');
+    return now < endDate;
+  });
   const [currentView, setView] = useState<ViewState>(ViewState.DRIVERS);
   const [showSearch, setShowSearch] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [news, setNews] = useState<NewsItem[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
+  const [firebaseData, setFirebaseData] = useState({ calendar: [], drivers: [], teams: [], notifications: [] });
+
+  useEffect(() => {
+    const unsubscribe = subscribeToData((calendar, drivers, teams, fbNotifications) => {
+      setFirebaseData({ calendar, drivers, teams, notifications: fbNotifications as any });
+      
+      // Merge firebase notifications with initial ones, or just use firebase ones
+      if (fbNotifications && fbNotifications.length > 0) {
+        // Sort by timestamp descending
+        const sorted = [...fbNotifications].sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+        
+        // Keep read status if already in state
+        setNotifications(prev => {
+          const newNotifs = sorted.map(n => {
+            const existing = prev.find(p => p.id === n.id);
+            return { ...n, read: existing ? existing.read : false };
+          });
+          return newNotifs;
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -61,12 +98,26 @@ export default function App() {
     setNotifications([]);
   };
 
+  const dismissSpaceTheme = () => {
+    setIsSpaceTheme(false);
+    localStorage.setItem('spaceThemeDismissed_v2', 'true');
+  };
+
   const filteredConstructors = useMemo(() => {
     if (!searchQuery) return [];
     const lowerQuery = searchQuery.toLowerCase();
     return CONSTRUCTORS.filter(team => 
         team.name?.toLowerCase().includes(lowerQuery) || 
         team.drivers?.some(d => d?.toLowerCase().includes(lowerQuery))
+    );
+  }, [searchQuery]);
+
+  const filteredDrivers = useMemo(() => {
+    if (!searchQuery) return [];
+    const lowerQuery = searchQuery.toLowerCase();
+    return INITIAL_DRIVERS.filter(driver => 
+        driver.name?.toLowerCase().includes(lowerQuery) || 
+        driver.team?.toLowerCase().includes(lowerQuery)
     );
   }, [searchQuery]);
 
@@ -81,32 +132,88 @@ export default function App() {
   const renderContent = () => {
     switch (currentView) {
       case ViewState.NEWS:
-        return <NewsView />;
+        return <NewsView searchQuery={searchQuery} />;
       case ViewState.CALENDAR:
-        return <CalendarView />;
+        return <CalendarView firebaseData={firebaseData.calendar} />;
       case ViewState.DRIVERS:
-        return <DriversView searchQuery={searchQuery} />;
+        return <DriversView searchQuery={searchQuery} firebaseData={firebaseData.drivers} />;
       case ViewState.CONSTRUCTORS:
-        return <ConstructorsView />;
+        return <ConstructorsView searchQuery={searchQuery} firebaseData={firebaseData.teams} />;
       case ViewState.STREAMS:
         return <StreamsView />;
+      case ViewState.FAVORITES:
+        return <FavoritesView />;
+      case ViewState.PREDICTIONS:
+        return <PredictionsView />;
+      case ViewState.ADMIN:
+        return <AdminView data={firebaseData} />;
       default:
-        return <DriversView searchQuery={searchQuery} />;
+        return <DriversView searchQuery={searchQuery} firebaseData={firebaseData.drivers} />;
     }
   }
 
   return (
     <div className="flex h-screen bg-black text-white font-sans selection:bg-f1-red selection:text-white overflow-hidden">
-      <Navigation currentView={currentView} setView={setView} />
+      <AnimatePresence>
+        {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+      </AnimatePresence>
+      <Navigation currentView={currentView} setView={setView} isSpaceTheme={isSpaceTheme} />
       
-      <div className="flex-1 flex flex-col relative overflow-hidden pb-[72px] md:pb-0">
+      <div className={`flex-1 flex flex-col relative overflow-hidden pb-[72px] md:pb-0 ${isSpaceTheme ? 'space-theme' : ''}`}>
+        {isSpaceTheme && (
+          <style>{`
+            .space-theme {
+              background-color: #050014 !important;
+              background-image: 
+                radial-gradient(1px 1px at 25px 5px, white, rgba(255,255,255,0)),
+                radial-gradient(1px 1px at 50px 25px, white, rgba(255,255,255,0)),
+                radial-gradient(1px 1px at 125px 20px, white, rgba(255,255,255,0)),
+                radial-gradient(1.5px 1.5px at 50px 75px, white, rgba(255,255,255,0)),
+                radial-gradient(2px 2px at 15px 125px, white, rgba(255,255,255,0)),
+                radial-gradient(2.5px 2.5px at 110px 80px, white, rgba(255,255,255,0));
+              background-size: 150px 150px;
+              animation: space-scroll 60s linear infinite;
+            }
+            @keyframes space-scroll {
+              0% { background-position: 0 0; }
+              100% { background-position: 150px 150px; }
+            }
+            .space-theme main {
+              background: transparent !important;
+            }
+            .space-theme .glass-panel {
+              background: rgba(30, 15, 50, 0.7) !important;
+              border-color: rgba(130, 80, 255, 0.3) !important;
+            }
+          `}</style>
+        )}
+        
+        {isSpaceTheme && (
+          <div className="bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-900 text-white p-3 flex flex-col sm:flex-row items-center justify-between z-40 border-b border-purple-500/30 flex-shrink-0">
+            <div className="flex items-center gap-3 mb-2 sm:mb-0">
+              <span className="text-2xl drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">🚀🥚</span>
+              <div>
+                <h3 className="font-bold text-sm">С Днём Космонавтики и Светлой Пасхой!</h3>
+                <p className="text-xs text-purple-200">Космических скоростей и светлых побед!</p>
+              </div>
+            </div>
+            <button 
+              onClick={dismissSpaceTheme}
+              className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap border border-white/20"
+            >
+              Вернуть стандартную тему
+            </button>
+          </div>
+        )}
+
         {/* Top Bar - Minimal */}
-        <header className="h-16 flex items-center justify-end px-6 border-b border-white/5 bg-black/50 backdrop-blur-md z-40 flex-shrink-0">
+        <header className={`h-16 flex items-center justify-end px-6 border-b backdrop-blur-md z-40 flex-shrink-0 transition-colors duration-500 ${isSpaceTheme ? 'bg-[#050014]/50 border-purple-500/20' : 'bg-black/50 border-white/5'}`}>
           <div className="flex gap-4">
-              <button onClick={() => setShowSearch(!showSearch)} className={`hover:text-white transition-colors ${showSearch ? 'text-f1-red' : 'text-gray-400'}`}><Search size={20}/></button>
-              <button onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markAllAsRead(); }} className={`hover:text-white relative transition-colors ${showNotifications ? 'text-f1-red' : 'text-gray-400'}`}>
+              <button onClick={() => setView(ViewState.ADMIN)} className={`hover:text-white transition-colors ${currentView === ViewState.ADMIN ? (isSpaceTheme ? 'text-purple-400' : 'text-f1-red') : 'text-gray-400'}`} title="Админка"><Settings size={20}/></button>
+              <button onClick={() => setShowSearch(!showSearch)} className={`hover:text-white transition-colors ${showSearch ? (isSpaceTheme ? 'text-purple-400' : 'text-f1-red') : 'text-gray-400'}`}><Search size={20}/></button>
+              <button onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) markAllAsRead(); }} className={`hover:text-white relative transition-colors ${showNotifications ? (isSpaceTheme ? 'text-purple-400' : 'text-f1-red') : 'text-gray-400'}`}>
                   <Bell size={20}/>
-                  {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-f1-red rounded-full"></span>}
+                  {unreadCount > 0 && <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${isSpaceTheme ? 'bg-purple-500 shadow-[0_0_5px_rgba(168,85,247,0.8)]' : 'bg-f1-red'}`}></span>}
               </button>
           </div>
         </header>
@@ -132,7 +239,7 @@ export default function App() {
                              <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-3 px-2">Пилоты</h3>
                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                  {filteredDrivers.map(driver => (
-                                     <div key={driver.id} className="glass-panel p-3 rounded-xl flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => { setView(ViewState.DRIVERS); setShowSearch(false); setSearchQuery(''); }}>
+                                     <div key={driver.id} className="glass-panel p-3 rounded-xl flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => { setView(ViewState.DRIVERS); setShowSearch(false); }}>
                                          <img src={driver.image} alt={driver.name} referrerPolicy="no-referrer" className="w-12 h-12 rounded-full object-cover bg-gray-800 border border-f1-red/50" />
                                          <div>
                                              <h4 className="font-bold text-sm">{driver.name}</h4>
@@ -149,7 +256,7 @@ export default function App() {
                              <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-3 px-2">Команды</h3>
                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                  {filteredConstructors.map(team => (
-                                     <div key={team.id} className="glass-panel p-3 rounded-xl flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer relative overflow-hidden" onClick={() => { setView(ViewState.CONSTRUCTORS); setShowSearch(false); setSearchQuery(''); }}>
+                                     <div key={team.id} className="glass-panel p-3 rounded-xl flex items-center gap-4 hover:bg-white/5 transition-colors cursor-pointer relative overflow-hidden" onClick={() => { setView(ViewState.CONSTRUCTORS); setShowSearch(false); }}>
                                          <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: team.color }} />
                                          <div className="pl-2">
                                              <h4 className="font-bold text-sm">{team.name}</h4>
@@ -230,7 +337,7 @@ export default function App() {
         )}
 
         {/* Main Container */}
-        <main className="flex-1 overflow-y-auto bg-gradient-to-b from-f1-dark to-black relative">
+        <main className={`flex-1 overflow-y-auto relative transition-colors duration-500 ${isSpaceTheme ? 'bg-transparent' : 'bg-gradient-to-b from-f1-dark to-black'}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={currentView}

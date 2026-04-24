@@ -3,44 +3,47 @@ export interface NewsItem {
   title: string;
   link: string;
   time: string;
+  imageUrl?: string;
+  summary?: string;
 }
 
 export const fetchF1News = async (): Promise<NewsItem[]> => {
   try {
-    const response = await fetch('https://www.f1news.ru/');
+    const response = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.f1news.ru%2Fexport%2Fnews.xml');
     if (!response.ok) throw new Error('Failed to fetch news');
-    const html = await response.text();
     
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const newsList: NewsItem[] = [];
+    const data = await response.json();
+    if (data.status !== 'ok') throw new Error('RSS to JSON failed');
     
-    const links = doc.querySelectorAll('a');
-    links.forEach((el) => {
-      const href = el.getAttribute('href');
-      const text = el.textContent?.trim() || '';
-      const className = el.className || '';
+    const newsList: NewsItem[] = data.items.map((item: any) => {
+      const date = new Date(item.pubDate.replace(' ', 'T')); // Handle "2026-04-06 12:10:00" format
       
-      if (href && href.includes('/news/') && text.length > 20 && (className.includes('b-news-list__title') || className.includes('b-home-super-news__link'))) {
-        let time = '';
-        if (className.includes('b-news-list__title')) {
-           const li = el.closest('li');
-           if (li) {
-             time = li.querySelector('.b-news-list__time')?.textContent?.trim() || li.querySelector('.b-news-list__date')?.textContent?.trim() || '';
-           }
-        }
-        
-        newsList.push({
-          id: href,
-          title: text,
-          link: href.startsWith('http') ? href : "https://www.f1news.ru" + href,
-          time: time || 'Недавно'
-        });
+      // Calculate relative time or format nicely
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      
+      let timeStr = '';
+      if (diffMins < 60) {
+        timeStr = `${diffMins} мин. назад`;
+      } else if (diffHours < 24) {
+        timeStr = `${diffHours} ч. назад`;
+      } else {
+        timeStr = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
       }
+
+      return {
+        id: item.guid || item.link,
+        title: item.title,
+        link: item.link,
+        time: timeStr,
+        imageUrl: item.enclosure?.link,
+        summary: item.description
+      };
     });
 
-    // Deduplicate by link and limit to 20
-    return Array.from(new Map(newsList.map(item => [item.link, item])).values()).slice(0, 20);
+    return newsList.slice(0, 20);
   } catch (err) {
     console.error("Error fetching news:", err);
     return [];

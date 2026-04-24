@@ -1,16 +1,30 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DriverCard } from './DriverCard';
 import { Driver } from '../types';
 import { INITIAL_DRIVERS } from '../data/drivers';
 
 interface DriversViewProps {
   searchQuery: string;
+  firebaseData?: any[];
 }
 
-export const DriversView: React.FC<DriversViewProps> = ({ searchQuery }) => {
-  const [drivers] = useState<Driver[]>(() => {
+export const DriversView: React.FC<DriversViewProps> = ({ searchQuery, firebaseData = [] }) => {
+  const [drivers, setDrivers] = useState<Driver[]>(() => {
     return [...INITIAL_DRIVERS].sort((a, b) => b.points - a.points);
   });
+
+  useEffect(() => {
+    if (firebaseData && firebaseData.length > 0) {
+      // Merge initial data with firebase data
+      const merged = INITIAL_DRIVERS.map(driver => {
+        const fbDriver = firebaseData.find(d => d.id === driver.id);
+        return fbDriver ? { ...driver, ...fbDriver } : driver;
+      });
+      // Sort by points
+      merged.sort((a, b) => b.points - a.points);
+      setDrivers(merged);
+    }
+  }, [firebaseData]);
 
   const filteredDrivers = useMemo(() => {
     if (!searchQuery) return drivers;

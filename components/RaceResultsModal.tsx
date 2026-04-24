@@ -7,6 +7,7 @@ interface RaceResult {
   team: string;
   time: string;
   points: number;
+  status?: string;
 }
 
 interface RaceResultsModalProps {
@@ -69,6 +70,7 @@ export const RaceResultsModal: React.FC<RaceResultsModalProps> = ({ isOpen, onCl
                 
                 <div className="text-right">
                   <div className="font-mono text-xs sm:text-sm flex items-center justify-end gap-1">
+                    {result.status && <span className="bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded text-[10px] mr-1 uppercase">{result.status}</span>}
                     <Clock size={12} className="text-gray-500" /> {result.time}
                   </div>
                   <div className={`text-xs sm:text-sm font-bold mt-0.5 ${result.points > 0 ? 'text-f1-red' : 'text-gray-500'}`}>

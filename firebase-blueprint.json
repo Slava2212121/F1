@@ -1,0 +1,145 @@
+{
+  "entities": {
+    "Race": {
+      "title": "Race",
+      "description": "A Formula 1 race event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "date": { "type": "string" },
+        "circuit": { "type": "string" },
+        "status": { "type": "string", "enum": ["UPCOMING", "NEXT", "COMPLETED", "CANCELLED"] },
+        "winner": { "type": "string" },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "position": { "type": "string" },
+              "driver": { "type": "string" },
+              "team": { "type": "string" },
+              "time": { "type": "string" },
+              "points": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["name", "date", "circuit", "status"]
+    },
+    "Driver": {
+      "title": "Driver",
+      "description": "A Formula 1 driver",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "team": { "type": "string" },
+        "points": { "type": "number" },
+        "position": { "type": "number" },
+        "image": { "type": "string" },
+        "number": { "type": "number" }
+      },
+      "required": ["name", "team", "points", "position"]
+    },
+    "Team": {
+      "title": "Team",
+      "description": "A Formula 1 constructor team",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "points": { "type": "number" },
+        "position": { "type": "number" },
+        "color": { "type": "string" },
+        "drivers": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["name", "points", "position", "color"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A real-time push notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "time": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["title", "message", "timestamp"]
+    },
+    "PredictionEvent": {
+      "title": "PredictionEvent",
+      "description": "Глобальное соревнование прогнозов",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "year": { "type": "number" }
+      },
+      "required": ["name", "year"]
+    },
+    "PredictionStage": {
+      "title": "PredictionStage",
+      "description": "Этап прогнозов с заданным диапазоном гонок",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "startRaceId": { "type": "string" },
+        "endRaceId": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["name", "startRaceId", "endRaceId", "isActive"]
+    },
+    "Prediction": {
+      "title": "Prediction",
+      "description": "Ставка пользователя на гонку",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "raceId": { "type": "string" },
+        "winnerDriverId": { "type": "string" },
+        "dotdDriverId": { "type": "string" },
+        "randomEventValue": { "type": "string" },
+        "pointsEarned": { "type": "number" },
+        "isCalculated": { "type": "boolean" }
+      },
+      "required": ["userId", "raceId", "winnerDriverId"]
+    }
+  },
+  "firestore": {
+    "/races/{raceId}": {
+      "schema": { "$ref": "#/entities/Race" },
+      "description": "Race calendar and results"
+    },
+    "/drivers/{driverId}": {
+      "schema": { "$ref": "#/entities/Driver" },
+      "description": "Driver standings and info"
+    },
+    "/teams/{teamId}": {
+      "schema": { "$ref": "#/entities/Team" },
+      "description": "Constructor standings and info"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Real-time notifications"
+    },
+    "/predictionEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/PredictionEvent" },
+      "description": "Events for predictions"
+    },
+    "/predictionEvents/{eventId}/stages/{stageId}": {
+      "schema": { "$ref": "#/entities/PredictionStage" },
+      "description": "Stages of an event"
+    },
+    "/predictions/{predictionId}": {
+      "schema": { "$ref": "#/entities/Prediction" },
+      "description": "User predictions"
+    }
+  }
+}

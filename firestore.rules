@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Global Deny
+    match /{document=**} { 
+      allow read, write: if false; 
+    }
+
+    // Helper Functions
+    function isAuthenticated() { return request.auth != null; }
+    function isAdmin() { return isAuthenticated() && request.auth.token.email == "slavakolos12@gmail.com" && request.auth.token.email_verified == true; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function hasRequiredFields(fields) { return request.resource.data.keys().hasAll(fields); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // User Validator
+    function isValidUser(data) {
+      return data.keys().hasAll(['nickname', 'createdAt']) &&
+             data.keys().size() == 2 &&
+             data.nickname is string && data.nickname.size() >= 3 && data.nickname.size() <= 20 &&
+             data.createdAt is timestamp;
+    }
+
+    // Prediction Validator
+    function isValidPrediction(data) {
+      return data.keys().hasAll(['userId', 'raceId', 'winner', 'dotd', 'randomEvent', 'updatedAt']) &&
+             data.keys().size() == 6 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.raceId is string && data.raceId.size() < 20 &&
+             data.winner is string && data.winner.size() < 50 &&
+             data.dotd is string && data.dotd.size() < 50 &&
+             data.randomEvent is string && data.randomEvent.size() < 50 &&
+             data.updatedAt is timestamp;
+    }
+
+    // Generic validations for existing collections (Races, Drivers, Teams)
+    function isValidRace(data) { 
+        return data.name is string && data.status is string && 
+               (!('correctAnswers' in data) || (
+                   data.correctAnswers.winner is string && 
+                   data.correctAnswers.dotd is string && 
+                   data.correctAnswers.randomEvent is string
+               ));
+    }
+    function isValidDriver(data) { return data.name is string && data.team is string; }
+    function isValidTeam(data) { return data.name is string && data.color is string; }
+    function isValidNotification(data) { return data.title is string && data.message is string; }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == userId && 
+                       isValidUser(incoming()) && 
+                       incoming().createdAt == request.time;
+      allow update: if isAuthenticated() && 
+                       request.auth.uid == userId && 
+                       incoming().diff(existing()).affectedKeys().hasOnly(['nickname']) &&
+                       incoming().nickname is string && 
+                       incoming().nickname.size() >= 3 && 
+                       incoming().nickname.size() <= 20;
+      allow delete: if isAdmin();
+    }
+
+    match /predictions/{predictionId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && 
+                       predictionId.matches('^' + incoming().raceId + '_' + request.auth.uid + '$') &&
+                       isValidPrediction(incoming()) &&
+                       incoming().updatedAt == request.time;
+      allow update: if isAuthenticated() && 
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['winner', 'dotd', 'randomEvent', 'updatedAt']) &&
+                       incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    match /races/{raceId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidRace(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /drivers/{driverId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidDriver(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /teams/{teamId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidTeam(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidNotification(incoming());
+      allow delete: if isAdmin();
+    }
+  }
+}

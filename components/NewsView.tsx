@@ -3,7 +3,11 @@ import { ExternalLink, RefreshCw, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchF1News, NewsItem } from '../src/lib/news';
 
-export const NewsView: React.FC = () => {
+interface NewsViewProps {
+  searchQuery?: string;
+}
+
+export const NewsView: React.FC<NewsViewProps> = ({ searchQuery }) => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +30,12 @@ export const NewsView: React.FC = () => {
   useEffect(() => {
     fetchNews();
   }, []);
+
+  const filteredNews = React.useMemo(() => {
+    if (!searchQuery) return news;
+    const lowerQuery = searchQuery.toLowerCase();
+    return news.filter(item => item.title.toLowerCase().includes(lowerQuery));
+  }, [searchQuery, news]);
 
   return (
     <div className="pt-6 pb-24 px-4 max-w-4xl mx-auto">
@@ -54,7 +64,7 @@ export const NewsView: React.FC = () => {
               </div>
             ))
           ) : (
-            news.map((item, index) => (
+            filteredNews.map((item, index) => (
               <motion.a 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -65,9 +75,22 @@ export const NewsView: React.FC = () => {
                 rel="noopener noreferrer"
                 className="glass-panel p-4 rounded-xl flex flex-col gap-2 hover:bg-white/10 transition-colors group block"
               >
+                {item.imageUrl && (
+                  <img 
+                    src={item.imageUrl} 
+                    alt={item.title} 
+                    className="w-full h-48 object-cover rounded-lg mb-2" 
+                    referrerPolicy="no-referrer" 
+                  />
+                )}
                 <h3 className="font-bold text-lg leading-tight group-hover:text-f1-red transition-colors">
                   {item.title}
                 </h3>
+                {item.summary && (
+                  <p className="text-sm text-gray-400 line-clamp-2">
+                    {item.summary}
+                  </p>
+                )}
                 <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
                   <span className="flex items-center gap-1">
                     <Clock size={12} /> {item.time}

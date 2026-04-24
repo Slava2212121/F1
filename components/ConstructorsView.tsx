@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { Heart } from 'lucide-react';
 
-interface Constructor {
+export interface Constructor {
   id: string;
   name: string;
   points: number;
@@ -23,13 +24,57 @@ export const CONSTRUCTORS: Constructor[] = [
   { id: '11', name: 'Cadillac F1 Team', points: 0, color: '#FFB800', drivers: ['V. Bottas', 'S. Perez'] },
 ].sort((a, b) => b.points - a.points);
 
-export const ConstructorsView: React.FC = () => {
+interface ConstructorsViewProps {
+  searchQuery?: string;
+  firebaseData?: any[];
+}
+
+export const ConstructorsView: React.FC<ConstructorsViewProps> = ({ searchQuery, firebaseData = [] }) => {
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [teams, setTeams] = useState<Constructor[]>(() => {
+    return [...CONSTRUCTORS].sort((a, b) => b.points - a.points);
+  });
+
+  useEffect(() => {
+    if (firebaseData && firebaseData.length > 0) {
+      const merged = CONSTRUCTORS.map(team => {
+        const fbTeam = firebaseData.find(t => t.id === team.id);
+        return fbTeam ? { ...team, ...fbTeam } : team;
+      });
+      merged.sort((a, b) => b.points - a.points);
+      setTeams(merged);
+    }
+  }, [firebaseData]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('f1_favorites_teams');
+    if (stored) setFavorites(JSON.parse(stored));
+  }, []);
+
+  const toggleFavorite = (e: React.MouseEvent, teamId: string) => {
+    e.stopPropagation();
+    const newFavorites = favorites.includes(teamId)
+      ? favorites.filter(id => id !== teamId)
+      : [...favorites, teamId];
+    setFavorites(newFavorites);
+    localStorage.setItem('f1_favorites_teams', JSON.stringify(newFavorites));
+  };
+
+  const filteredConstructors = React.useMemo(() => {
+    if (!searchQuery) return teams;
+    const lowerQuery = searchQuery.toLowerCase();
+    return teams.filter(team => 
+        team.name?.toLowerCase().includes(lowerQuery) || 
+        team.drivers?.some(d => d?.toLowerCase().includes(lowerQuery))
+    );
+  }, [searchQuery, teams]);
+
   return (
     <div className="pt-6 pb-24 px-4 max-w-4xl mx-auto">
       <h1 className="text-2xl font-display font-bold mb-6 px-2">Кубок Конструкторов <span className="text-f1-red">2026</span></h1>
       
       <div className="space-y-3">
-        {CONSTRUCTORS.map((team, index) => (
+        {filteredConstructors.map((team, index) => (
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -43,6 +88,9 @@ export const ConstructorsView: React.FC = () => {
             />
             
             <div className="flex items-center gap-3 sm:gap-4 pl-3 sm:pl-4">
+              <button onClick={(e) => toggleFavorite(e, team.id)} className="mr-1">
+                <Heart size={18} className={favorites.includes(team.id) ? 'fill-f1-gold text-f1-gold' : 'text-f1-carbon hover:text-white transition-colors'} />
+              </button>
               <div className="w-6 sm:w-8 text-center font-display font-bold text-lg sm:text-xl text-gray-400">
                 {index + 1}
               </div>
